@@ -158,6 +158,95 @@ function showProfile() {
     profileEl.innerHTML = tempStr;
 }
 
+//show map and draw a circle
+function showMap(location) {
+    mapboxgl.accessToken = 'pk.eyJ1IjoiamFybnZhbnMiLCJhIjoiY2puY2NjOGFoMDV3czNrbnZjNzJicTFvbiJ9.YmULBJZC1OMMVucfXxLliA';
+    let map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/streets-v10',
+        center: [location.longitude, location.latitude], // starting position [lng, lat]
+        zoom: 13, // starting zoom
+        interactive: true
+    });
+    
+    map.on('load', function(){
+        map.addLayer({
+            'id': 'locationPerson',
+            'type' : 'circle',
+            'source': {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': [location.longitude, location.latitude],
+                    }
+                }
+            },
+            'paint': {
+                
+                'circle-radius': {
+                    'base': 50,
+                    'stops': [[5, 30], [10, 110], [22, 33]]
+                },
+                'circle-color': '#db5d22',
+                'circle-opacity': 0.5
+            }
+        })
+    });
+    document.querySelector('.center').addEventListener('click', function (e) {
+        map.flyTo({
+            center: [location.longitude, location.latitude],
+            zoom: 13
+        });
+    });
+}
+
+//convert address to coordinates
+function getCoordinatesFromAddress(search, profileNumber) {
+    let address = encodeURI(search);
+    let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${address}.json?limit=1&access_token=pk.eyJ1IjoiamFybnZhbnMiLCJhIjoiY2puY2NjOGFoMDV3czNrbnZjNzJicTFvbiJ9.YmULBJZC1OMMVucfXxLliA`
+    fetch(url)
+    .then(function(response){
+        return response.json();
+    })
+    .then(function(data){
+        let coordinates = data.features[0].center;
+        let profile = JSON.parse(localStorage.getItem('profile' + profileNumber));
+        profile.coordinates.longitude = coordinates[0];
+        profile.coordinates.latitude = coordinates[1];
+        localStorage.setItem('profile' + profileNumber, JSON.stringify(profile));   
+    })
+    .catch(function(error){
+        console.log(error);
+    });
+}
+
+//calculate distance between 2 points
+function calculateDistance(currentLocation, locationPerson) {
+    let startPoint = turf.point([currentLocation.longitude, currentLocation.latitude]);
+    let endPoint = turf.point([locationPerson.longitude, locationPerson.latitude]);
+    let distance = turf.distance(startPoint, endPoint);
+
+    return distance;
+}
+
+//getting location when user gives his location
+function getLocation(position) {
+    let current = {longitude: '', latitude: ''};
+    current.longitude = position.coords.longitude;
+    current.latitude = position.coords.latitude;
+    sessionStorage.setItem('currentLocation', JSON.stringify(current));
+    sessionStorage.setItem('currentLocation', JSON.stringify(current));
+}
+
+//error when person doesn't give his location
+function getErrorPosition(error) {
+    if (error.code == 1){
+        console.log('User did not give his location');
+    }
+}
+
 //making a list of the person you liked or disliked
 function listLikesDislikes(type){
     let tempStr = '';
@@ -305,92 +394,3 @@ window.onload = function(){
     }
     grabData();
 } 
-
-//show map and draw a circle
-function showMap(location) {
-    mapboxgl.accessToken = 'pk.eyJ1IjoiamFybnZhbnMiLCJhIjoiY2puY2NjOGFoMDV3czNrbnZjNzJicTFvbiJ9.YmULBJZC1OMMVucfXxLliA';
-    let map = new mapboxgl.Map({
-        container: 'map',
-        style: 'mapbox://styles/mapbox/streets-v10',
-        center: [location.longitude, location.latitude], // starting position [lng, lat]
-        zoom: 13, // starting zoom
-        interactive: true
-    });
-    
-    map.on('load', function(){
-        map.addLayer({
-            'id': 'locationPerson',
-            'type' : 'circle',
-            'source': {
-                'type': 'geojson',
-                'data': {
-                    'type': 'Feature',
-                    'geometry': {
-                        'type': 'Point',
-                        'coordinates': [location.longitude, location.latitude],
-                    }
-                }
-            },
-            'paint': {
-                
-                'circle-radius': {
-                    'base': 50,
-                    'stops': [[5, 30], [10, 110], [22, 33]]
-                },
-                'circle-color': '#db5d22',
-                'circle-opacity': 0.5
-            }
-        })
-    });
-    document.querySelector('.center').addEventListener('click', function (e) {
-        map.flyTo({
-            center: [location.longitude, location.latitude],
-            zoom: 13
-        });
-    });
-}
-
-//getting location when user gives his location
-function getLocation(position) {
-    let current = {longitude: '', latitude: ''};
-    current.longitude = position.coords.longitude;
-    current.latitude = position.coords.latitude;
-    sessionStorage.setItem('currentLocation', JSON.stringify(current));
-    sessionStorage.setItem('currentLocation', JSON.stringify(current));
-}
-
-//error when person doesn't give his location
-function getErrorPosition(error) {
-    if (error.code == 1){
-        console.log('User did not give his location');
-    }
-}
-
-//convert address to coordinates
-function getCoordinatesFromAddress(search, profileNumber) {
-    let address = encodeURI(search);
-    let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${address}.json?limit=1&access_token=pk.eyJ1IjoiamFybnZhbnMiLCJhIjoiY2puY2NjOGFoMDV3czNrbnZjNzJicTFvbiJ9.YmULBJZC1OMMVucfXxLliA`
-    fetch(url)
-    .then(function(response){
-        return response.json();
-    })
-    .then(function(data){
-        let coordinates = data.features[0].center;
-        let profile = JSON.parse(localStorage.getItem('profile' + profileNumber));
-        profile.coordinates.longitude = coordinates[0];
-        profile.coordinates.latitude = coordinates[1];
-        localStorage.setItem('profile' + profileNumber, JSON.stringify(profile));   
-    })
-    .catch(function(error){
-        console.log(error);
-    });
-}
-
-//calculate distance between 2 points
-function calculateDistance(currentLocation, locationPerson) {
-    let startPoint = turf.point([currentLocation.longitude, currentLocation.latitude]);
-    let endPoint = turf.point([locationPerson.longitude, locationPerson.latitude]);
-    let distance = turf.distance(startPoint, endPoint);
-
-    return distance;
-}
